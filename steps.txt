@@ -1,0 +1,14 @@
+py -3.9 -m venv face-venv
+
+face-venv\Scripts\activate
+
+python.exe -m pip install --upgrade pip
+
+pip install -r requirements.txt
+
+D:
+
+cd D:\UT\junior\face\專題
+
+python end.py 有訓練也有使用
+ server_tcp_photo.py網路版的

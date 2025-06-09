@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
@@ -7,8 +8,15 @@ from facenet_pytorch import MTCNN, InceptionResnetV1
 import cv2
 from PIL import Image ,ImageDraw, ImageFont
 import torch
+from sklearn.metrics import accuracy_score
+
+total_time = 0
+frame_count = 0
+
 while True:
-    print("要輸入圖片請輸入1，要開始輸入2，要退出輸入3，要訓練模型請輸入4，要錄影訓練請輸入5")
+
+
+    print("1-要輸入圖片(從photo資料夾輸入圖片)\n2-開始辨識(會顯示歐式距離)\n3-退出\n4-訓練模型(會顯示準確率)\n5-錄影訓練(從相機擷取照片)\n6-顯示共幾位人物資料")
     a=input()
     if a=="1":
         a=0
@@ -113,46 +121,61 @@ while True:
                 print("SVM 模型訓練完成！")
                 joblib.dump(model, 'svm_model.pkl')
                 joblib.dump(scaler, 'scaler.pkl')
-                break        
+                break
+
             elif user_input=="y":
                 continue
                 #################################################################################################################################################
         # 資料夾路徑
 #output_dir = "face_data_lin_Ting_Hsuan"
-    if a=="4":    
-        output_dir_1= "face_data"
-# 加載特徵向量與標籤
+    if a == "4":
+        output_dir_1 = "face_data"
+
+        # 加載特徵向量與標籤
         embeddings = []
-        labels = []
-        Y=[]
+        Y = []
         for file in os.listdir(output_dir_1):
             if file.endswith("_embedding.npy"):
                 embedding = np.load(os.path.join(output_dir_1, file))
-                label = file.split("label.npy")[0]
                 embeddings.append(embedding)
-                labels.append(label)
-        
-            if file.endswith("_label.npy"):
-                Y_=np.load(os.path.join(output_dir_1,file))
-                Y.append(Y_)
-    # 將列表轉為 numpy 數組
-        X = np.vstack(embeddings)  # 特徵向量
-        y = np.array(labels)       # 對應的標籤
-        print(f"訓練數據集大小: {X.shape}, 標籤數量: {len(y)}")
 
+            if file.endswith("_label.npy"):
+                label = np.load(os.path.join(output_dir_1, file))
+                Y.append(label)
+
+        # 將列表轉為 numpy array
+        X = np.vstack(embeddings)  # 特徵向量
+        y = np.array(Y).flatten()  # 標籤（扁平化）
+
+        print(f"訓練數據集大小: {X.shape}, 標籤數量: {len(y)}")
+        assert X.shape[0] == y.shape[0], "樣本數與標籤數不一致！"
+
+        # 標準化
         scaler = StandardScaler()
         features_scaled = scaler.fit_transform(X)
         print("標準化後數據的形狀:", features_scaled.shape)
 
-        assert X.shape[0] == y.shape[0], "樣本數與標籤數不一致！"
-        #print(Y)
+        # 切分訓練 / 測試集
+        from sklearn.model_selection import train_test_split
+        from sklearn.metrics import accuracy_score
+
+        X_train, X_test, y_train, y_test = train_test_split(features_scaled, y, test_size=0.2, random_state=42)
+
         # 訓練模型
         model = SVC(kernel='linear')
-        model.fit(features_scaled, Y)
+        model.fit(X_train, y_train)
         print("SVM 模型訓練完成！")
+
+        # 測試集準確率
+        y_pred = model.predict(X_test)
+        acc = accuracy_score(y_test, y_pred)
+        print(f"測試集準確率: {acc:.4f}")
+
+        # 儲存模型與 scaler
         joblib.dump(model, 'svm_model.pkl')
         joblib.dump(scaler, 'scaler.pkl')
-#################################################################################################################################################
+
+    #################################################################################################################################################
     elif a=="2":
         font_path = "msjh.ttc"
         font = ImageFont.truetype(font_path, 30)#設定字體大小
@@ -172,11 +195,12 @@ while True:
         passing_line =0.7
         count = 1
         while True:
+            start_time = time.time()  # ⏱ 開始計時
             ret, frame = cap.read()
             if not ret:
                 print("無法讀取攝影機畫面")
                 break
-
+            ret, frame = cap.read()
             # 轉換為 RGB 格式
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(img)
@@ -229,6 +253,15 @@ while True:
             key = cv2.waitKey(10) & 0xFF
             if  frame_count == 100:
                 break
+
+        # 顯示處理時間
+        end_time = time.time()
+
+        elapsed_sec = end_time - start_time
+        elapsed_ms = elapsed_sec * 1000  # 換算成毫秒
+
+        print(f"辨識耗時: {elapsed_ms:.4f} 毫秒")
+
         cap.release()
         cv2.destroyAllWindows()
     elif a=="3":
@@ -318,7 +351,7 @@ while True:
 
 
         cap.release()
-        cv2.destroyAllWindows() 
+        cv2.destroyAllWindows()
 
     if a == "6":
         output_dir = "face_data"
@@ -327,18 +360,23 @@ while True:
             continue
 
         embedding_files = [f for f in os.listdir(output_dir) if f.endswith("_embedding.npy")]
-        names = set()
+        names = {}  # 使用字典儲存每個名字對應的張數
 
         for file in embedding_files:
             if file.startswith("['") and "']_" in file:
-                name = file.split("']_")[0][2:]  # 去掉 [' 和 ']_
+                name = file.split("']_")[0][2:]  # 取出 ['name']_embedding 的 name
             else:
                 name = file.split("_")[0]  # 處理沒有 [] 的情況
-            names.add(name)
+
+            # 累加每個名字的照片數量
+            if name in names:
+                names[name] += 1
+            else:
+                names[name] = 1
 
         if names:
             print(f"目前共有 {len(names)} 位不同人物的資料：")
             for name in sorted(names):
-                print(f" - {name}")
+                print(f" - {name}：共 {names[name]} 張照片")
         else:
             print("目前尚無人臉資料。")
