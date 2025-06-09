@@ -23,35 +23,48 @@ py -3.9 -m venv face-venv
 ```
 
 2. 啟動虛擬環境（Windows）：
-
+```
 face-venv\Scripts\activate
-
+```
 3. 更新 pip:
-
+```
 python.exe -m pip install --upgrade pip
-
+```
 4. 安裝專案所需套件：
-
+```
 pip install -r requirements.txt
-
+```
 5. 若已離開虛擬環境，請重新啟動：
-
+```
 face-venv\Scripts\activate
-
+```
 6. 切換磁碟機並進入專案資料夾：
-
+```
 cd 你的程式所在資料夾
-
+```
 7. 執行主程式：
-
+```
 python end.py
+```
+
+#可以從這裡直接複製
+```
+py -3.9 -m venv face-venv
+face-venv\Scripts\activate
+python.exe -m pip install --upgrade pip
+pip install -r requirements.txt
+face-venv\Scripts\activate
+D:
+cd 程式所在資料夾
+python end.py
+```
 
 ## 功能說明
 
 本專案提供以下主要功能：
 
 1. **輸入圖片**  
-   從 `photo` 資料夾中讀取圖片，進行人臉辨識。
+   如果要加入新人物的圖片，將圖片檔須為.jpg或.png，以數字依序命名放入 `photo` 資料夾，再執行 功能1: 從 `photo` 資料夾中讀取圖片，將資料加入模型訓練。
 
 2. **開始辨識**  
    對輸入的人臉進行辨識，並顯示歐式距離來判斷辨識結果的相似度。
@@ -66,4 +79,4 @@ python end.py
    利用相機錄影，擷取人臉照片以增強訓練資料，進行模型訓練。
 
 6. **顯示人物資料數量**  
-   顯示目前資料庫中已收集的人物總數。
+   顯示目前資料庫中已收集的人物總數，以每個人的照片數量。
